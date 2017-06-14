@@ -82,10 +82,7 @@
           (dotimes [x 10000]
             (make-bunny em stage (rand-int W) (+ 10 (rand-int (- H 10)))))
           (.appendChild @dom-node (.-view renderer))
-          (loop-fn)))
-
-
-      :component-will-unmount
+          (loop-fn))) :component-will-unmount
       (fn [_]
         (reset! dom-node false))
       :reagent-render
