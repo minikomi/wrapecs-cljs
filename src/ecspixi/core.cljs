@@ -2,7 +2,7 @@
   (:require [cljsjs.pixi]
             [reagent.core :as r]
             [goog.object :as gobj]
-            tiny-ecs))
+            makr))
 
 (enable-console-print!)
 
@@ -14,14 +14,9 @@
       (.push arr v))
     arr))
 
-(def Drawable
-  (let [drawable (fn [] #js{})]
-    drawable))
+(deftype Drawable [^:mutable sprite])
 
-(def Velocity
-  (let [velocity (fn [] #js{})]
-    velocity))
-
+(deftype Velocity [^:mutable dx ^:mutable dy])
 
 (def W (.. js/window -document -body -clientWidth))
 (def H (.. js/window -document -body -clientHeight))
@@ -30,20 +25,14 @@
   (.fromImage P.Sprite "https://pixijs.github.io/examples/required/assets/basics/bunny.png"))
 
 (defn make-bunny [em stage x y]
-  (let [bunny (.createEntity em)
+  (let [bunny (.create em)
         sprite (get-sprite)]
 
-    (.addComponent bunny Drawable)
     (.set (.-position sprite) x y)
     (.addChild stage sprite)
-    (set! (.. bunny -drawable -sprite) sprite)
 
-    (.addComponent bunny Velocity)
-    (set! (.. bunny -velocity -dx) (- (rand-int 20) 10))
-    (set! (.. bunny -velocity -dy) (- (rand-int 20) 10))))
-
-(defn query-components [em cs]
-  (.queryComponents em (shallow-clj->arr cs)))
+    (.add bunny (Drawable. sprite))
+    (.add bunny (Velocity. (rand-int 10) (rand-int 10)))))
 
 (defn rev-x [v]
   (set! (.-dx v) (- (.-dx v))))
@@ -52,11 +41,12 @@
   (set! (.-dy v) (- (.-dy v))))
 
 (defn bounce-update [em]
-  (doseq [e (query-components em [Drawable Velocity])]
-    (let [pos (.. e -drawable -sprite -position)
+  (doseq [e (.query em Drawable Velocity)]
+    (let [pos (.-position (.-sprite (.get e Drawable)))
+          vel (.get e Velocity)
           x (.-x pos)
-          y (.-y pos)
-          vel (.. e -velocity)]
+          y (.-y pos)]
+
       (when (or (>= 0 x) (<= W x))
         (rev-x vel))
       (if (or (>= 0 y) (<= H y))
@@ -65,9 +55,9 @@
               (inc (.-dy vel)))))))
 
 (defn move-update [em]
-  (doseq [e (query-components em [Drawable Velocity])]
-    (let [pos (.. e -drawable -sprite -position)
-          vel (.. e -velocity)]
+  (doseq [e (.query em Drawable Velocity)]
+    (let [pos (.-position (.-sprite (.get e Drawable)))
+          vel (.get e Velocity)]
       (.set pos
             (+ (.-x pos) (.-dx vel))
             (+ (.-y pos) (.-dy vel))))))
@@ -82,7 +72,7 @@
         (reset! dom-node (r/dom-node this))
         (let [renderer (.autoDetectRenderer P W H)
               stage (P.Container.)
-              em (tiny-ecs/EntityManager.)
+              em (makr Drawable Velocity)
               loop-fn (fn loop []
                         (when @dom-node
                           (js/requestAnimationFrame loop))

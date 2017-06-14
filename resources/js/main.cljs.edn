@@ -1,7 +1,7 @@
 {:require [ecspixi.core]
  :init-fns [ecspixi.core/init]
  :compiler-options {:asset-path "/js/main.out"
-                    :npm-deps {:tiny-ecs "2.0.0"}
+                    :npm-deps {:makr "2.1.1"}
                     :language-out :ecmascript5
                     }
  }
