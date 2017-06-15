@@ -1,8 +1,9 @@
 (ns ecspixi.core
   (:require [cljsjs.pixi]
             [reagent.core :as r]
-            [goog.object :as gobj]
-            tiny-ecs))
+            [goog.object :as o]
+            [ecs.EntityManager :as EM]))
+
 
 (enable-console-print!)
 
@@ -29,18 +30,20 @@
 (defn get-sprite []
   (.fromImage P.Sprite "https://pixijs.github.io/examples/required/assets/basics/bunny.png"))
 
+(defn component-set [e c-name k v]
+  (o/set (o/get e (name c-name)) (name k) v))
+
 (defn make-bunny [em stage x y]
   (let [bunny (.createEntity em)
         sprite (get-sprite)]
 
-    (.addComponent bunny Drawable)
-    (.set (.-position sprite) x y)
     (.addChild stage sprite)
-    (set! (.. bunny -drawable -sprite) sprite)
+    (.set (.-position sprite) x y)
 
-    (.addComponent bunny Velocity)
-    (set! (.. bunny -velocity -dx) (- (rand-int 20) 10))
-    (set! (.. bunny -velocity -dy) (- (rand-int 20) 10))))
+    (.addComponent bunny "drawable" sprite)
+    (.addComponent bunny "velocity"
+                   #js{:dx (- (rand-int 20) 10)
+                       :dy (- (rand-int 20) 10)})))
 
 (defn query-components [em cs]
   (.queryComponents em (shallow-clj->arr cs)))
@@ -52,11 +55,12 @@
   (set! (.-dy v) (- (.-dy v))))
 
 (defn bounce-update [em]
-  (doseq [e (query-components em [Drawable Velocity])]
-    (let [pos (.. e -drawable -sprite -position)
+  (doseq [e (query-components em ["drawable" "velocity"])]
+    (let [spr (.get e "drawable")
+          pos (.-position spr)
           x (.-x pos)
           y (.-y pos)
-          vel (.. e -velocity)]
+          vel (.get e "velocity")]
       (when (or (>= 0 x) (<= W x))
         (rev-x vel))
       (if (or (>= 0 y) (<= H y))
@@ -64,13 +68,18 @@
         (set! (.-dy vel)
               (inc (.-dy vel)))))))
 
+(defn clamp [v l h]
+  (min h (max l v)))
+
 (defn move-update [em]
-  (doseq [e (query-components em [Drawable Velocity])]
-    (let [pos (.. e -drawable -sprite -position)
-          vel (.. e -velocity)]
+  (doseq [e (query-components em ["drawable" "velocity"])]
+    (let [pos (.-position (.get e "drawable"))
+          vel (.get e "velocity")]
       (.set pos
-            (+ (.-x pos) (.-dx vel))
-            (+ (.-y pos) (.-dy vel))))))
+            (clamp (+ (.-x pos) (.-dx vel))
+                   0 W)
+            (clamp (+ (.-y pos) (.-dy vel))
+                   0 H)))))
 
 (defn game []
   (let [dom-node (atom false)
@@ -82,7 +91,7 @@
         (reset! dom-node (r/dom-node this))
         (let [renderer (.autoDetectRenderer P W H)
               stage (P.Container.)
-              em (tiny-ecs/EntityManager.)
+              em (EM/Manager.)
               loop-fn (fn loop []
                         (when @dom-node
                           (js/requestAnimationFrame loop))
