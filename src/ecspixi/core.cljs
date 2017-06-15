@@ -14,9 +14,57 @@
       (.push arr v))
     arr))
 
-(deftype Drawable [^:mutable sprite])
+(defn shallow-clj->obj [m]
+  (let [obj (js-obj)
+        ks (.keys m)]
+    (.forEach m
+              (fn [v k]
+                (aset obj (name k) v)))
+    obj))
 
-(deftype Velocity [^:mutable dx ^:mutable dy])
+(deftype Drawable [^:mutable properties]
+  Object
+  (toString [this]
+            (str (.-properties this)))
+  ILookup
+  (-lookup [this k] (-lookup this k nil))
+  (-lookup [this k not-found]
+          (aget properties (.-name k)))
+  IFn
+  (-invoke [this k]
+          (or (aget properties (.-name k)) nil))
+  (-invoke [this k not-found]
+          (or (aget properties (.-name k)) not-found))
+  IVolatile
+  (-vreset! [_ ^:not-native new-properties]
+    (.forEach new-properties
+              (fn [v k]
+                (aset properties (.-name k) v)))
+    nil)
+  IDeref
+  (-deref [_] properties))
+
+(deftype Velocity [^:mutable properties]
+  Object
+  (toString [this]
+            (str (.-properties this)))
+  ILookup
+  (-lookup [this  k] (-lookup this k nil))
+  (-lookup [this  k not-found]
+          (aget properties (.-name k)))
+  IFn
+  (-invoke [this k]
+          (or (aget properties (.-name k)) nil))
+  (-invoke [this k not-found]
+          (or (aget properties (.-name k)) not-found))
+  IVolatile
+  (-vreset! [_ ^:not-native new-properties]
+    (.forEach new-properties
+              (fn [v k]
+                (aset properties (.-name k) v)))
+    nil)
+  IDeref
+  (-deref [_] properties))
 
 (def W (.. js/window -document -body -clientWidth))
 (def H (.. js/window -document -body -clientHeight))
@@ -30,37 +78,28 @@
 
     (.set (.-position sprite) x y)
     (.addChild stage sprite)
-
-    (.add bunny (Drawable. sprite))
-    (.add bunny (Velocity. (rand-int 10) (rand-int 10)))))
-
-(defn rev-x [v]
-  (set! (.-dx v) (- (.-dx v))))
-
-(defn rev-y [v]
-  (set! (.-dy v) (- (.-dy v))))
+    (.add bunny (Drawable. #js{:sprite sprite}))
+    (.add bunny (Velocity. #js{:dx (rand-int 10)
+                               :dy (rand-int 10)}))))
 
 (defn bounce-update [em]
   (doseq [e (.query em Drawable Velocity)]
-    (let [pos (.-position (.-sprite (.get e Drawable)))
+    (let [pos (.-position (:sprite (.get e Drawable)))
           vel (.get e Velocity)
           x (.-x pos)
           y (.-y pos)]
-
       (when (or (>= 0 x) (<= W x))
-        (rev-x vel))
+        (vreset! vel {:dx (- (vel :dx)) :dy (vel :dy)}))
       (if (or (>= 0 y) (<= H y))
-        (rev-y vel)
-        (set! (.-dy vel)
-              (inc (.-dy vel)))))))
+        (vreset! vel {:dx (:dy vel) :dy (- (:dy vel))})))))
 
 (defn move-update [em]
   (doseq [e (.query em Drawable Velocity)]
-    (let [pos (.-position (.-sprite (.get e Drawable)))
+    (let [pos (.-position (:sprite (.get e Drawable)))
           vel (.get e Velocity)]
       (.set pos
-            (+ (.-x pos) (.-dx vel))
-            (+ (.-y pos) (.-dy vel))))))
+            (+ (.-x pos) (:dx vel))
+            (+ (.-y pos) (:dy vel))))))
 
 (defn game []
   (let [dom-node (atom false)
