@@ -4,7 +4,6 @@
             [goog.object :as o]
             [ecs.EntityManager :as EM]))
 
-
 (enable-console-print!)
 
 (def P js/PIXI)
@@ -23,7 +22,6 @@
   (let [velocity (fn [] #js{})]
     velocity))
 
-
 (def W (.. js/window -document -body -clientWidth))
 (def H (.. js/window -document -body -clientHeight))
 
@@ -33,17 +31,17 @@
 (defn component-set [e c-name k v]
   (o/set (o/get e (name c-name)) (name k) v))
 
+(deftype Velocity [^:mutable dx ^:mutable dy])
+
 (defn make-bunny [em stage x y]
   (let [bunny (.createEntity em)
         sprite (get-sprite)]
-
     (.addChild stage sprite)
     (.set (.-position sprite) x y)
-
     (.addComponent bunny "drawable" sprite)
     (.addComponent bunny "velocity"
-                   #js{:dx (- (rand-int 20) 10)
-                       :dy (- (rand-int 20) 10)})))
+                   (Velocity. (- (rand-int 20) 10)
+                              (- (rand-int 20) 10)))))
 
 (defn query-components [em cs]
   (.queryComponents em (shallow-clj->arr cs)))
@@ -101,10 +99,7 @@
           (dotimes [x 10000]
             (make-bunny em stage (rand-int W) (+ 10 (rand-int (- H 10)))))
           (.appendChild @dom-node (.-view renderer))
-          (loop-fn)))
-
-
-      :component-will-unmount
+          (loop-fn))) :component-will-unmount
       (fn [_]
         (reset! dom-node false))
       :reagent-render
