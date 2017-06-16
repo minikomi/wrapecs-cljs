@@ -8,31 +8,25 @@
 
 (def P js/PIXI)
 
-(defn shallow-clj->arr [coll]
-  (let [arr (array)]
-    (doseq [v coll]
-      (.push arr v))
-    arr))
-
 (defn vec->str-arr [^:not-native coll]
   (let [arr (array)]
     (doseq [v coll]
       (.push arr (name v)))
     arr))
 
-(def Drawable
-  (let [drawable (fn [] #js{})]
-    drawable))
-
-(def Velocity
-  (let [velocity (fn [] #js{})]
-    velocity))
-
 (def W (.. js/window -document -body -clientWidth))
 (def H (.. js/window -document -body -clientHeight))
 
+(def bunny-texture (.fromImage P.Texture "bunnys.png"))
+(def textures
+  (mapv (fn [y]
+            (P.Texture.
+              (.-baseTexture bunny-texture)
+              (P.math.Rectangle. 2 y 26 37)))
+        [47 86 125 164 2]))
+
 (defn get-sprite []
-  (.fromImage P.Sprite "https://pixijs.github.io/examples/required/assets/basics/bunny.png"))
+  (P.Sprite. (rand-nth textures)))
 
 (defn get-component [entity c-name]
   (.get entity (name c-name)))
@@ -40,7 +34,31 @@
 (defn component-set [e c-name ks v]
   (oset!+ (get-component e c-name) ks v))
 
-(deftype Component [^:mutable properties])
+(defprotocol IVelocity
+  (velocity-set [v dx' dy'])
+  (bounce-x [_])
+  (bounce-y [_])
+  (gravity [_]))
+
+(deftype Velocity [^:mutable dx ^:mutable dy]
+  IVelocity
+  (velocity-set [v dx' dy']
+    (set! dx dx')
+    (set! dy dy'))
+  (bounce-x [_] (set! dx (- dx)))
+  (bounce-y [_] (set! dy (- dy)))
+  (gravity [_] (set! dy (inc dy))))
+
+(defprotocol IDrawable
+  (pos-x [_])
+  (pos-y [_])
+  (pos-set [_ x y]))
+
+(deftype Drawable [^:mutable sprite]
+  IDrawable
+  (pos-x [_] (.. sprite -position -x))
+  (pos-y [_] (.. sprite -position -y))
+  (pos-set [_ x y] (.set (.-position sprite) x y)))
 
 (defn add-component [entity c-name c-data]
   (.addComponent entity (name c-name) c-data))
@@ -50,13 +68,17 @@
         sprite (get-sprite)]
     (.addChild stage sprite)
     (.set (.-position sprite) x y)
-    (add-component bunny :drawable sprite)
-    (add-component bunny :velocity
-                   #js{:dx (- (rand-int 20) 10)
-                       :dy (- (rand-int 20) 10)})))
+    (set! (.-rotation sprite) (- (rand) 0.5))
+    (add-component bunny
+                   :drawable
+                   (Drawable. sprite))
+    (add-component bunny
+                   :velocity
+                   (Velocity. (- (rand-int 10) 5)
+                              (- (rand-int 10) 5)))))
 
 (defn query-components [em cs]
-  (.queryComponents em (shallow-clj->arr cs)))
+  (.queryComponents em (vec->str-arr cs)))
 
 (defn rev-x [v]
   (oset! v :dx (- (oget v :dx))))
@@ -65,38 +87,25 @@
   (oset! v :dy (- (oget v :dy))))
 
 (defn bounce-update [em]
-  (doseq [e (query-components em ["drawable" "velocity"])]
-    (let [x (oget (get-component e :drawable) :position :x)
-          y (oget (get-component e :drawable) :position :y)
+  (doseq [e (query-components em [:drawable :velocity])]
+    (let [x (pos-x (get-component e :drawable))
+          y (pos-y (get-component e :drawable))
           vel (get-component e :velocity)]
       (when (or (>= 0 x) (<= W x))
-        (set-component e :velocity [:dx]
-                      (- (oget vel :dx))))
+        (bounce-x vel))
       (if (or (>= 0 y) (<= H y))
-        (set-component e :velocity [:dy]
-                       (- (oget vel :dy)))
-        (set-component e :velocity [:dy]
-                       (inc (oget vel :dy)))))))
+        (bounce-y vel)
+        (gravity vel)))))
 
 (defn clamp [v l h]
   (min h (max l v)))
 
-(defn set-position [drawable x y]
-  (.set (.-position drawable) x y))
-
-(defn set-component [e c-name path v]
-  (.set e (name c-name) (vec->str-arr path) v))
-
 (defn move-update [em]
-  (doseq [e (query-components em ["drawable" "velocity"])]
-    (let [x (oget (get-component e :drawable) :position :x)
-          y (oget (get-component e :drawable) :position :y)
-          dx (oget (get-component e :velocity) :dx)
-          dy (oget (get-component e :velocity) :dy)]
-      (set-component e :drawable [:position :x]
-                     (+ x dx))
-      (set-component e :drawable [:position :y]
-                     (+ y dy)))))
+  (doseq [e (query-components em [:drawable :velocity])]
+    (let [drw (get-component e :drawable)
+          vel (get-component e :velocity)]
+      (pos-set drw (+ (pos-x drw) (.-dx vel))
+                   (+ (pos-y drw) (.-dy vel))))))
 
 (defn game []
   (let [dom-node (atom false)
