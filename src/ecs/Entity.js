@@ -39,17 +39,57 @@ Entity.prototype.get = function(cName) {
   return this[cName].data;
 }
 
-function setNested(obj, path, val) {
+function _getNested(obj, path) {
+  if(path.length == 1) {
+    return obj[path[0]];
+  } else {
+    return _getNested(obj[path[0]], path.slice(1));
+  }
+}
+
+function _getNested(object, path) {
+  var index = 0,
+      length = path.length;
+
+  while (object != null && index < length) {
+    object = object[(path[index++])];
+  }
+  return (index && index == length) ? object : undefined;
+}
+
+var lookups = {};
+
+function pathArrPath(path) {
+  var ret = path[0];
+  for(var i = 1; i < path.length; i++) {
+    ret += "." + path[i];
+  }
+  return ret;
+}
+
+Entity.prototype.getNested = function(cName, path) {
+  if(lookups[path]) {
+    return lookups[path](this[cName].data);
+  }
+  else {
+    var f = new Function( "o", "return o." + pathArrPath(path) );
+    lookups[path] = f;
+    return  f(this[cName].data);
+  }
+};
+
+
+function _setNested(obj, path, val) {
   if(path.length == 1) {
     obj[path[0]] = val;
   }
   else {
-    setNested(obj[path[0]], path.slice(1), val);
+    _setNested(obj[path[0]], path.slice(1), val);
   }
 }
 
 Entity.prototype.set = function(cName, path, val) {
-  setNested(this[cName].data, path, val);
+  _setNested(this[cName].data, path, val);
 }
 
 Entity.prototype.hasAllComponents = function (cNames) {

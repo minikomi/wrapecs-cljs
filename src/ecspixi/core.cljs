@@ -2,6 +2,7 @@
   (:require [cljsjs.pixi]
             [reagent.core :as r]
             [oops.core :as o]
+            [clojure.string :as s]
             [ecs.EntityManager :as EM]))
 
 (enable-console-print!)
@@ -34,8 +35,16 @@
 (defn get-sprite []
   (.fromImage P.Sprite "https://pixijs.github.io/examples/required/assets/basics/bunny.png"))
 
-(defn get-component [entity c-name]
+(defn get-component
+  [entity c-name]
   (.get entity (name c-name)))
+
+(defn get-in-component
+  [entity c-name path]
+  (.getNested entity (name c-name) (vec->str-arr path)))
+
+(defn set-component [e c-name path v]
+  (.set e (name c-name) (vec->str-arr path) v))
 
 (defn component-set [e c-name ks v]
   (o/oset!+ (get-component e c-name) ks v))
@@ -66,8 +75,8 @@
 
 (defn bounce-update [em]
   (doseq [e (query-components em ["drawable" "velocity"])]
-    (let [x (o/oget (get-component e :drawable) :position :x)
-          y (o/oget (get-component e :drawable) :position :y)
+    (let [x (get-in-component e :drawable [:position :x])
+          y (get-in-component e :drawable [:position :y])
           vel (get-component e :velocity)]
       (when (or (>= 0 x) (<= W x))
         (rev-x vel))
@@ -81,19 +90,19 @@
 (defn set-position [drawable x y]
   (.set (.-position drawable) x y))
 
-(defn set-component [e c-name path v]
-  (.set e (name c-name) (vec->str-arr path) v))
-
 (defn move-update [em]
   (doseq [e (query-components em ["drawable" "velocity"])]
-    (let [x (o/oget (get-component e :drawable) :position :x)
-          y (o/oget (get-component e :drawable) :position :y)
-          dx (o/oget (get-component e :velocity) :dx)
-          dy (o/oget (get-component e :velocity) :dy)]
+    (let [
+          x (get-in-component e :drawable [:position :x])
+          y (get-in-component e :drawable [::position :y])
+          dx (get-in-component e :velocity [:dx])
+          dy (get-in-component e :velocity [:dy])]
+
+
       (set-component e :drawable [:position :x]
-                     (+ x dx))
+                       (+ x dx))
       (set-component e :drawable [:position :y]
-                     (+ y dy)))))
+                       (+ y dy)))))
 
 (defn game []
   (let [dom-node (atom false)
