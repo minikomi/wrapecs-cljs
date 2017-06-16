@@ -39,6 +39,19 @@ Entity.prototype.get = function(cName) {
   return this[cName].data;
 }
 
+function setNested(obj, path, val) {
+  if(path.length == 1) {
+    obj[path[0]] = val;
+  }
+  else {
+    setNested(obj[path[0]], path.slice(1), val);
+  }
+}
+
+Entity.prototype.set = function(cName, path, val) {
+  setNested(this[cName].data, path, val);
+}
+
 Entity.prototype.hasAllComponents = function (cNames) {
   var b = true;
 
