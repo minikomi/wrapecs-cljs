@@ -1,7 +1,7 @@
 (ns ecspixi.core
   (:require [cljsjs.pixi]
             [reagent.core :as r]
-            [oops.core :as o]
+            [oops.core :refer [oget oset!+ oset!]]
             [ecs.EntityManager :as EM]))
 
 (enable-console-print!)
@@ -38,7 +38,7 @@
   (.get entity (name c-name)))
 
 (defn component-set [e c-name ks v]
-  (o/oset!+ (get-component e c-name) ks v))
+  (oset!+ (get-component e c-name) ks v))
 
 (deftype Component [^:mutable properties])
 
@@ -59,21 +59,24 @@
   (.queryComponents em (shallow-clj->arr cs)))
 
 (defn rev-x [v]
-  (o/oset! v :dx (- (o/oget v :dx))))
+  (oset! v :dx (- (oget v :dx))))
 
 (defn rev-y [v]
-  (o/oset! v :dy (- (o/oget v :dy))))
+  (oset! v :dy (- (oget v :dy))))
 
 (defn bounce-update [em]
   (doseq [e (query-components em ["drawable" "velocity"])]
-    (let [x (o/oget (get-component e :drawable) :position :x)
-          y (o/oget (get-component e :drawable) :position :y)
+    (let [x (oget (get-component e :drawable) :position :x)
+          y (oget (get-component e :drawable) :position :y)
           vel (get-component e :velocity)]
       (when (or (>= 0 x) (<= W x))
-        (rev-x vel))
+        (set-component e :velocity [:dx]
+                      (- (oget vel :dx))))
       (if (or (>= 0 y) (<= H y))
-        (rev-y vel)
-        (o/oset! vel :dy (inc (o/oget vel :dy)))))))
+        (set-component e :velocity [:dy]
+                       (- (oget vel :dy)))
+        (set-component e :velocity [:dy]
+                       (inc (oget vel :dy)))))))
 
 (defn clamp [v l h]
   (min h (max l v)))
@@ -86,10 +89,10 @@
 
 (defn move-update [em]
   (doseq [e (query-components em ["drawable" "velocity"])]
-    (let [x (o/oget (get-component e :drawable) :position :x)
-          y (o/oget (get-component e :drawable) :position :y)
-          dx (o/oget (get-component e :velocity) :dx)
-          dy (o/oget (get-component e :velocity) :dy)]
+    (let [x (oget (get-component e :drawable) :position :x)
+          y (oget (get-component e :drawable) :position :y)
+          dx (oget (get-component e :velocity) :dx)
+          dy (oget (get-component e :velocity) :dy)]
       (set-component e :drawable [:position :x]
                      (+ x dx))
       (set-component e :drawable [:position :y]
@@ -112,7 +115,7 @@
                         (bounce-update em)
                         (move-update em)
                         (.render renderer stage))]
-          (dotimes [x 10000]
+          (dotimes [x 20000]
             (make-bunny em stage (rand-int W) (+ 10 (rand-int (- H 10)))))
           (.appendChild @dom-node (.-view renderer))
           (loop-fn))) :component-will-unmount
