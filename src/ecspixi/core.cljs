@@ -1,8 +1,8 @@
 (ns ecspixi.core
   (:require [cljsjs.pixi]
-            [reagent.core :as r]))
+            [reagent.core :as r]
             [oops.core :refer [oget oset!+ oset!]]
-
+            [ecs.EntityManager :as EM]))
 
 (enable-console-print!)
 
@@ -81,15 +81,7 @@
         [47 86 125 164 2]))
 
 (defn get-sprite []
-  (P.Sprite. (rand-nth t      (set-component e :drawable [:position :x]
-                                             (+ x dx))
-                       (set-component e :drawable [:position :y]
-                                      (+ y dy))))
-  e      (set-component e :drawable [:position :x]
-                        (+ x dx))
-  (set-component e :drawable [:position :y]
-                 (+ y dy)))
-xtures
+  (P.Sprite. (rand-nth textures)))
 
 (defn make-bunny [em stage x y]
   (let [bunny (.createEntity em)
