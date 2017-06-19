@@ -65,7 +65,6 @@ EntityManager.prototype.removeEntity = function (entity) {
   // Prevent any acecss and free
   entity._manager = null;
   this._entityPool.recycle(entity);
-  entity.removeAllListeners();
 }
 
 EntityManager.prototype.entityAddTag = function (entity, tag) {
