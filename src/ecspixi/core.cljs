@@ -9,7 +9,7 @@
 ;; constants
 
 (def P js/PIXI)
-(def MAX_BUNNIES 5000)
+(def MAX_BUNNIES 10000)
 (def NEW_BUNNIES 100)
 (def W (.. js/window -document -body -clientWidth))
 (def H (.. js/window -document -body -clientHeight))
@@ -138,34 +138,29 @@
   (set! (.-interactive stage) true)
   (set! (.-hitArea stage)
         (P.Rectangle. 0 0 W H))
-
-  ;; mouse move
   (.on stage "mousemove"
        (fn [ev]
          (event! :mouse-move {:x (.. ev -data -global -x)
                               :y (.. ev -data -global -y)})))
-  ;; mouse down broadcast
   (.on stage "mousedown"
        (fn [ev]
          (event! :mouse-down {:x (.. ev -data -global -x)
                               :y (.. ev -data -global -y)})))
-  ;; mouse up broadcast
   (.on stage "mouseup"
        (fn [ev] (event! :mouse-up))))
 
 (def mouse-pressed (volatile! false))
 (def mouse-position (volatile! nil))
-
 (def event-handlers
   {:mouse-down
-   (fn mouse-down-handler [stage em data]
+   (fn mouse-down-handler [_ data]
      (vreset! mouse-pressed true)
      (vreset! mouse-position data))
    :mouse-up
-   (fn mouse-up-handler [stage em data]
+   (fn mouse-up-handler [_ data]
      (vreset! mouse-pressed false))
    :mouse-move
-   (fn mouse-move-hanlder [stage em data]
+   (fn mouse-move-hanlder [_ data]
      (vreset! mouse-position data))})
 
 (defn maybe-add-bunnies [em]
@@ -185,7 +180,7 @@
         current-events @event-bus]
     (doseq [[ev-type data] @event-bus]
       (when-let [h (event-handlers ev-type)]
-        (h stage em data)))
+        (h em data)))
     (vreset! event-bus [])))
 
 (defn render-scene [em]
