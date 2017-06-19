@@ -9,6 +9,8 @@
 ;; constants
 
 (def P js/PIXI)
+(def MAX_BUNNIES 5000)
+(def NEW_BUNNIES 100)
 (def W (.. js/window -document -body -clientWidth))
 (def H (.. js/window -document -body -clientHeight))
 
@@ -64,6 +66,7 @@
     (case kw
       :x (.-x (.-position sprite))
       :y (.-y (.-position sprite))
+      :sprite sprite
       nil))
   IDrawable
   (position-set [_ x y]
@@ -94,8 +97,8 @@
                    (Drawable. sprite))
     (add-component bunny
                    :velocity
-                   (Velocity. (- (rand-int 10) 5)
-                              (- (rand-int 10) 5)))))
+                   (Velocity. (- (rand-int 20) 10)
+                              (- (+ 10 (rand-int 5)))))))
 
 ;; systems
 
@@ -115,14 +118,74 @@
     (let [drw (get-component e :drawable)
           vel (get-component e :velocity)]
       (position-set drw
-                    (+ (drw :x) (vel :dx))
-                    (+ (drw :y) (vel :dy))))))
+                    (+ (drw :x) (* 0.5 (vel :dx)))
+                    (+ (drw :y) (* 0.5 (vel :dy)))))))
 
 ;; main loop
 
+(def event-bus (volatile! []))
+
+(defn event!
+  ([event-type]
+   (vswap! event-bus conj [event-type nil]))
+  ([event-type data]
+   (vswap! event-bus conj [event-type data])))
+
+(defn init-events [stage em]
+  (set! (.-interactive stage) true)
+  (set! (.-hitArea stage)
+        (P.Rectangle. 0 0 W H))
+
+  ;; mouse move
+  (.on stage "mousemove"
+       (fn [ev]
+         (event! :mouse-move {:x (.. ev -data -global -x)
+                              :y (.. ev -data -global -y)})))
+  ;; mouse down broadcast
+  (.on stage "mousedown"
+       (fn [ev]
+         (event! :mouse-down {:x (.. ev -data -global -x)
+                              :y (.. ev -data -global -y)})))
+  ;; mouse up broadcast
+  (.on stage "mouseup"
+       (fn [ev] (event! :mouse-up))))
+
+(def mouse-pressed (volatile! false))
+(def mouse-position (volatile! nil))
+
+(def event-handlers
+  {:mouse-down
+   (fn mouse-down-handler [stage em data]
+     (vreset! mouse-pressed true)
+     (vreset! mouse-position data))
+   :mouse-up
+   (fn mouse-up-handler [stage em data]
+     (vreset! mouse-pressed false))
+   :mouse-move
+   (fn mouse-move-hanlder [stage em data]
+     (vreset! mouse-position data))})
+
+(defn maybe-add-bunnies [em stage]
+  (when @mouse-pressed
+    (dotimes [_ NEW_BUNNIES]
+      (make-bunny em stage (:x @mouse-position) (:y @mouse-position)))
+    (let [es (query-components em [:drawable :velocity])]
+      (when (< MAX_BUNNIES (count es))
+        (dotimes [n (- (count es) MAX_BUNNIES)]
+          (let [e (get es n)]
+            (.removeChild stage ((get-component e :drawable) :sprite))
+            (.remove e)))))))
+
+(defn process-events [em stage]
+  (let [current-events @event-bus]
+    (doseq [[ev-type data] @event-bus]
+      (when-let [h (event-handlers ev-type)]
+        (h stage em data)))
+    (vreset! event-bus [])))
+
 (defn game []
   (let [dom-node (atom false)
-        mouse-state (atom {:mousedown false})]
+        mouse-state (atom {:mouse-pressed false})]
     (r/create-class
      {:display-name "game"
       :component-did-mount
@@ -134,10 +197,13 @@
               loop-fn (fn loop []
                         (when @dom-node
                           (js/requestAnimationFrame loop))
+                        (process-events em stage)
+                        (maybe-add-bunnies em stage)
                         (bounce-update em)
                         (move-update em)
                         (.render renderer stage))]
-          (dotimes [x 20000]
+          (init-events stage em)
+          (dotimes [x MAX_BUNNIES]
             (make-bunny em stage (rand-int W) (+ 10 (rand-int (- H 10)))))
           (.appendChild @dom-node (.-view renderer))
           (loop-fn))) :component-will-unmount
