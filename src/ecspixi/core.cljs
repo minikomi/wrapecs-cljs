@@ -112,8 +112,8 @@
     (let [drw (get-component e :drawable)
           vel (get-component e :velocity)]
       (.position-set drw
-                    (+ (drw :x) (* 0.5 (vel :dx)))
-                    (+ (drw :y) (* 0.5 (vel :dy)))))))
+                     (+ (drw :x) (* 0.5 (vel :dx)))
+                     (+ (drw :y) (* 0.5 (vel :dy)))))))
 
 ;; main loop
 
@@ -204,7 +204,8 @@
           (dotimes [x MAX_BUNNIES]
             (make-bunny em stage (rand-int W) (+ 10 (rand-int (- H 10)))))
           (.appendChild @dom-node (.-view renderer))
-          (loop-fn))) :component-will-unmount
+          (loop-fn)))
+      :component-will-unmount
       (fn [_]
         (reset! dom-node false))
       :reagent-render
