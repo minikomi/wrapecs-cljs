@@ -39,12 +39,6 @@
 
 ;; components
 
-(defprotocol IVelocity
-  (velocity-set [v dx' dy'])
-  (bounce-x [_])
-  (bounce-y [_])
-  (gravity [_]))
-
 (deftype Velocity [^:mutable dx ^:mutable dy]
   IFn
   (-invoke [this kw]
@@ -52,16 +46,13 @@
       :dx dx
       :dy dy
       nil))
-  IVelocity
+  Object
   (velocity-set [v dx' dy']
     (set! dx dx')
     (set! dy dy'))
   (bounce-x [_] (set! dx (- dx)))
   (bounce-y [_] (set! dy (- dy)))
   (gravity [_] (set! dy (inc dy))))
-
-(defprotocol IDrawable
-  (position-set [_ x y]))
 
 (deftype Drawable [^:mutable sprite]
   IFn
@@ -71,7 +62,7 @@
       :y (.-y (.-position sprite))
       :sprite sprite
       nil))
-  IDrawable
+  Object
   (position-set [_ x y]
     (.set (.-position sprite) x y)))
 
@@ -111,16 +102,16 @@
           y ((get-component e :drawable) :y)
           vel (get-component e :velocity)]
       (when (or (>= 0 x) (<= W x))
-        (bounce-x vel))
+        (.bounce-x vel))
       (if (or (>= 0 y) (<= H y))
-        (bounce-y vel)
-        (gravity vel)))))
+        (.bounce-y vel)
+        (.gravity vel)))))
 
 (defn move-update [em]
   (doseq [e (query-components em [:drawable :velocity])]
     (let [drw (get-component e :drawable)
           vel (get-component e :velocity)]
-      (position-set drw
+      (.position-set drw
                     (+ (drw :x) (* 0.5 (vel :dx)))
                     (+ (drw :y) (* 0.5 (vel :dy)))))))
 
