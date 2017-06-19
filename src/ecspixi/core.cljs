@@ -31,6 +31,9 @@
 (defn query-components [em cs]
   (.queryComponents em (vec->str-arr cs)))
 
+(defn get-global [em kw]
+  (get (.-globals em) kw))
+
 (defn clamp [v l h]
   (min h (max l v)))
 
@@ -165,23 +168,30 @@
    (fn mouse-move-hanlder [stage em data]
      (vreset! mouse-position data))})
 
-(defn maybe-add-bunnies [em stage]
+(defn maybe-add-bunnies [em]
   (when @mouse-pressed
-    (dotimes [_ NEW_BUNNIES]
-      (make-bunny em stage (:x @mouse-position) (:y @mouse-position)))
-    (let [es (query-components em [:drawable :velocity])]
-      (when (< MAX_BUNNIES (count es))
-        (dotimes [n (- (count es) MAX_BUNNIES)]
-          (let [e (get es n)]
-            (.removeChild stage ((get-component e :drawable) :sprite))
-            (.remove e)))))))
+    (let [stage (get-global em :stage)]
+      (dotimes [_ NEW_BUNNIES]
+        (make-bunny em stage (:x @mouse-position) (:y @mouse-position)))
+      (let [es (query-components em [:drawable :velocity])]
+        (when (< MAX_BUNNIES (count es))
+          (dotimes [n (- (count es) MAX_BUNNIES)]
+            (let [e (get es n)]
+              (.removeChild stage ((get-component e :drawable) :sprite))
+              (.remove e))))))))
 
-(defn process-events [em stage]
-  (let [current-events @event-bus]
+(defn process-events [em]
+  (let [stage (get-global em :stage)
+        current-events @event-bus]
     (doseq [[ev-type data] @event-bus]
       (when-let [h (event-handlers ev-type)]
         (h stage em data)))
     (vreset! event-bus [])))
+
+(defn render-scene [em]
+  (let [renderer (get-global em :renderer)
+        stage (get-global em :stage)]
+    (.render renderer stage)))
 
 (defn game []
   (let [dom-node (atom false)
@@ -193,15 +203,17 @@
         (reset! dom-node (r/dom-node this))
         (let [renderer (.autoDetectRenderer P W H)
               stage (P.Container.)
-              em (EM/Manager.)
+              em (EM/Manager. {:renderer renderer
+                               :stage stage})
               loop-fn (fn loop []
                         (when @dom-node
                           (js/requestAnimationFrame loop))
-                        (process-events em stage)
-                        (maybe-add-bunnies em stage)
-                        (bounce-update em)
-                        (move-update em)
-                        (.render renderer stage))]
+                        (doto em
+                          process-events
+                          maybe-add-bunnies
+                          bounce-update
+                          move-update
+                          render-scene))]
           (init-events stage em)
           (dotimes [x MAX_BUNNIES]
             (make-bunny em stage (rand-int W) (+ 10 (rand-int (- H 10)))))

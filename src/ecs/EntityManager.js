@@ -4,12 +4,13 @@ goog.require("ecs.ReusePool");
 
 ecs.EntityManager.Manager = EntityManager;
 
-function EntityManager () {
+function EntityManager (globals) {
   this._tags = {};
   this._entities = [];
   this._groups = {};
   this._entityPool = ecs.ReusePool.pool(function () { return new ecs.Entity.Entity(); });
   this._componentPools = {};
+  this.globals = globals;
 }
 
 function Group (Components, entities) {
