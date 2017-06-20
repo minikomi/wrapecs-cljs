@@ -24,16 +24,13 @@
               loop-fn (fn loop []
                         (when @dom-node
                           (js/requestAnimationFrame loop))
-                        (doto em
-                          s/process-events
-                          s/maybe-add-bunnies
-                          s/bounce-update
-                          s/move-update
-                          s/render-scene))]
+                        (s/run-systems em))]
+          ;; init
           (e/init-events stage em)
           (dotimes [x MAX_BUNNIES]
             (ent/make-bunny em stage (rand-int W) (+ 10 (rand-int (- H 10)))))
           (.appendChild @dom-node (.-view renderer))
+          ;; big bang
           (loop-fn)))
       :component-will-unmount
       (fn [_]
