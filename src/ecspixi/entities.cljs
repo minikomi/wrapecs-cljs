@@ -22,9 +22,9 @@
     (.set (.-position sprite) x y)
     (set! (.-rotation sprite) (- (rand) 0.5))
     (u/add-component bunny
-                    :drawable
-                    (com/Drawable. sprite))
+                     :drawable
+                     (com/Drawable. sprite))
     (u/add-component bunny
-                    :velocity
-                    (com/Velocity. (- (rand-int 20) 10)
-                                   (- (+ 10 (rand-int 5)))))))
+                     :velocity
+                     (com/Velocity. (- (rand-int 20) 10)
+                                    (- (+ 10 (rand-int 5)))))))

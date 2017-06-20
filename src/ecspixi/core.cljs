@@ -9,8 +9,6 @@
 
 (enable-console-print!)
 
-;; components
-
 (defn game []
   (let [dom-node (atom false)
         mouse-state (atom {:mouse-pressed false})]
