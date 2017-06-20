@@ -1,19 +1,18 @@
 (ns ecspixi.entities
-  (:require [ecspixi.constants :as C]
-            [ecspixi.util :as u]
+  (:require [ecspixi.util :as u]
             [ecspixi.components :as com]))
 
-(def bunny-texture (.fromImage C/P.Texture "bunnys.png"))
+(def bunny-texture (.fromImage js/PIXI.Texture "bunnys.png"))
 
 (def textures
   (mapv (fn [y]
-          (C/P.Texture.
+          (js/PIXI.Texture.
            (.-baseTexture bunny-texture)
-           (C/P.Rectangle. 2 y 26 37)))
+           (js/PIXI.Rectangle. 2 y 26 37)))
         [47 86 125 164 2]))
 
 (defn get-sprite []
-  (C/P.Sprite. (rand-nth textures)))
+  (js/PIXI.Sprite. (rand-nth textures)))
 
 (defn make-bunny [em stage x y]
   (let [bunny (.createEntity em)

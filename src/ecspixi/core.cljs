@@ -1,11 +1,13 @@
 (ns ecspixi.core
-  (:require [reagent.core :as r]
-            [ecspixi.events :as e]
-            [ecspixi.systems :as s]
-            [ecspixi.entities :as ent]
-            [ecspixi.util :as u]
-            [ecspixi.constants :refer [W H MAX_BUNNIES P] :as C]
-            [ecs.EntityManager :as EM]))
+  (:require
+   [cljsjs.pixi]
+   [reagent.core :as r]
+   [ecspixi.events :as e]
+   [ecspixi.systems :as s]
+   [ecspixi.entities :as ent]
+   [ecspixi.util :as u]
+   [ecspixi.constants :refer [W H MAX_BUNNIES]]
+   [ecs.EntityManager :as EM]))
 
 (enable-console-print!)
 
@@ -17,8 +19,8 @@
       :component-did-mount
       (fn [this]
         (reset! dom-node (r/dom-node this))
-        (let [renderer (.autoDetectRenderer P W H)
-              stage (C/P.Container.)
+        (let [renderer (.autoDetectRenderer js/PIXI W H)
+              stage (js/PIXI.Container.)
               em (EM/Manager. {:renderer renderer
                                :stage stage})
               loop-fn (fn loop []

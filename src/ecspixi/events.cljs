@@ -1,5 +1,5 @@
 (ns ecspixi.events
-  (:require [ecspixi.constants :as C]))
+  (:require [ecspixi.constants :refer [W H]]))
 
 (def event-bus (volatile! []))
 (def mouse-pressed (volatile! false))
@@ -14,7 +14,7 @@
 (defn init-events [stage em]
   (set! (.-interactive stage) true)
   (set! (.-hitArea stage)
-        (C/P.Rectangle. 0 0 C/W C/H))
+        (js/PIXI.Rectangle. 0 0 W H))
   (.on stage "mousemove"
        (fn [ev]
          (event! :mouse-move {:x (.. ev -data -global -x)
